@@ -28,10 +28,40 @@ jobs:
         with:
           cache-read-only: false
 
+      - name: Prepare signing and verification
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          ADI_REGISTRATION: ${{ secrets.ADI_REGISTRATION }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::KEYSTORE_BASE64 is not set, the release APK will be signed with the debug key"
+          fi
+          if [ -n "$ADI_REGISTRATION" ]; then
+            mkdir -p app/src/main/assets
+            printf '%s' "$ADI_REGISTRATION" > app/src/main/assets/adi-registration.properties
+          fi
+
       - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --build-cache --parallel --configuration-cache -x lint
+
+      - name: Show signing certificate
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          for apk in app/build/outputs/apk/release/*.apk; do
+            echo "### $(basename "$apk")" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            "$APKSIGNER" verify --print-certs "$apk" | grep -E "SHA-256|DN" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
 
       - uses: actions/upload-artifact@v4
         with:

@@ -22,3 +22,17 @@ An Android-only power and battery manager written in Kotlin with Jetpack Compose
 ```
 
 GitHub Actions builds the release APK on every push to `main` and uploads them as the `AndroidPower` artifact.
+
+## Release signing and Android developer verification
+
+The release APK is signed with the release key when these repository secrets are set:
+
+| Secret | Value |
+| --- | --- |
+| `KEYSTORE_BASE64` | Base64 of the release `.jks` keystore |
+| `KEYSTORE_PASSWORD` | Keystore password |
+| `KEY_ALIAS` | Key alias |
+| `KEY_PASSWORD` | Key password |
+| `ADI_REGISTRATION` | Snippet from the Android Developer Console, written to `assets/adi-registration.properties` at build time |
+
+Package name: `com.brenoworker.androidpower`. The SHA-256 certificate fingerprint of each build is shown in the workflow summary.
