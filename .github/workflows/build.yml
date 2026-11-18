@@ -28,13 +28,13 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Build APKs
+      - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug assembleRelease --build-cache --parallel --configuration-cache -x lint
+          ./gradlew assembleRelease --build-cache --parallel --configuration-cache -x lint
 
       - uses: actions/upload-artifact@v4
         with:
           name: AndroidPower
-          path: app/build/outputs/apk/**/*.apk
+          path: app/build/outputs/apk/release/*.apk
           compression-level: 0

@@ -22,8 +22,10 @@ import com.brenoworker.androidpower.data.NotificationSettings
 import com.brenoworker.androidpower.data.PowerPrefs
 import com.brenoworker.androidpower.data.PowerState
 import com.brenoworker.androidpower.data.PowerStateReader
+import com.brenoworker.androidpower.data.SystemOptimizer
 import com.brenoworker.androidpower.service.NotificationControlService
 import com.brenoworker.androidpower.service.PowerMonitorService
+import com.brenoworker.androidpower.ui.screens.OptimizerUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -120,6 +123,28 @@ class PowerViewModel(application: Application) : AndroidViewModel(application) {
 
     val activeNotifications = NotificationHub.active
     val notificationCounts = NotificationHub.counts
+
+    private val _optimizer = MutableStateFlow(OptimizerUiState())
+    val optimizer: StateFlow<OptimizerUiState> = _optimizer.asStateFlow()
+
+    fun refreshSystem() {
+        viewModelScope.launch {
+            val checks = SystemOptimizer.checks(app, battery.value, power.value)
+            val memory = SystemOptimizer.memory(app)
+            val storage = withContext(Dispatchers.IO) { SystemOptimizer.storage() }
+            _optimizer.update { it.copy(memory = memory, storage = storage, checks = checks) }
+        }
+    }
+
+    fun optimizeSystem() {
+        if (_optimizer.value.running) return
+        viewModelScope.launch {
+            _optimizer.update { it.copy(running = true) }
+            val result = SystemOptimizer.optimize(app)
+            _optimizer.update { it.copy(running = false, result = result) }
+            refreshSystem()
+        }
+    }
 
     fun refreshSettings() {
         _settings.value = prefs.load()

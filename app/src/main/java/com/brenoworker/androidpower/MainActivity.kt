@@ -68,6 +68,7 @@ private fun AndroidPowerApp(viewModel: PowerViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val optimizer by viewModel.optimizer.collectAsStateWithLifecycle()
     val notificationSettings by viewModel.notificationSettings.collectAsStateWithLifecycle()
     val notificationAccess by viewModel.notificationAccess.collectAsStateWithLifecycle()
     val activeNotifications by viewModel.activeNotifications.collectAsStateWithLifecycle()
@@ -101,7 +102,13 @@ private fun AndroidPowerApp(viewModel: PowerViewModel = viewModel()) {
         ) {
             when (tab) {
                 Tab.Battery -> DashboardScreen(battery)
-                Tab.Power -> PowerScreen(power, battery)
+                Tab.Power -> PowerScreen(
+                    power = power,
+                    battery = battery,
+                    optimizer = optimizer,
+                    onOptimize = viewModel::optimizeSystem,
+                    onRefreshSystem = viewModel::refreshSystem
+                )
                 Tab.Apps -> AppsScreen(apps, viewModel::refreshApps)
                 Tab.Monitor -> MonitorScreen(
                     settings = settings,

@@ -24,7 +24,13 @@ import com.brenoworker.androidpower.ui.SectionCard
 import com.brenoworker.androidpower.ui.StatusRow
 
 @Composable
-fun PowerScreen(power: PowerState, battery: BatterySnapshot) {
+fun PowerScreen(
+    power: PowerState,
+    battery: BatterySnapshot,
+    optimizer: OptimizerUiState,
+    onOptimize: () -> Unit,
+    onRefreshSystem: () -> Unit
+) {
     val context = LocalContext.current
 
     val hints = buildList {
@@ -53,6 +59,8 @@ fun PowerScreen(power: PowerState, battery: BatterySnapshot) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        OptimizerSection(state = optimizer, onOptimize = onOptimize, onRefresh = onRefreshSystem)
+
         SectionCard(title = "Power state") {
             StatusRow("Battery Saver", if (power.powerSaveMode) "On" else "Off", power.powerSaveMode)
             StatusRow("Doze (device idle)", if (power.deviceIdle) "Active" else "Inactive")
