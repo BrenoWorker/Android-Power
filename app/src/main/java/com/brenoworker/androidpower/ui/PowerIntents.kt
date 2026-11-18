@@ -27,6 +27,11 @@ object PowerIntents {
     fun notifications(context: Context): Intent =
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
 
+    fun notificationAccess(): Intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+
+    fun appNotifications(packageName: String): Intent =
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+
     fun open(context: Context, vararg intents: Intent) {
         for (intent in intents) {
             val launched = runCatching {

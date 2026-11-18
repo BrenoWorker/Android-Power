@@ -34,13 +34,17 @@ object Notifications {
         )
     }
 
-    fun status(context: Context, snapshot: BatterySnapshot): Notification {
+    fun status(context: Context, snapshot: BatterySnapshot, detailed: Boolean = true): Notification {
         val title = "${snapshot.level}% · ${snapshot.status.label}"
-        val text = listOf(
-            Format.current(snapshot.currentMa),
-            Format.power(snapshot.powerW),
-            Format.temperature(snapshot.temperatureC)
-        ).joinToString(" · ")
+        val text = if (detailed) {
+            listOf(
+                Format.current(snapshot.currentMa),
+                Format.power(snapshot.powerW),
+                Format.temperature(snapshot.temperatureC)
+            ).joinToString(" · ")
+        } else {
+            snapshot.plug.label
+        }
         val stopIntent = PendingIntent.getService(
             context,
             1,
@@ -61,8 +65,9 @@ object Notifications {
             .build()
     }
 
-    fun alert(context: Context, kind: AlertKind, title: String, text: String) {
+    fun alert(context: Context, kind: AlertKind, title: String, text: String, silent: Boolean = false) {
         val notification = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+            .setSilent(silent)
             .setSmallIcon(R.drawable.ic_stat_power)
             .setContentTitle(title)
             .setContentText(text)

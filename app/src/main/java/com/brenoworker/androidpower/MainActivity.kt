@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -33,6 +34,7 @@ import com.brenoworker.androidpower.ui.PowerViewModel
 import com.brenoworker.androidpower.ui.screens.AppsScreen
 import com.brenoworker.androidpower.ui.screens.DashboardScreen
 import com.brenoworker.androidpower.ui.screens.MonitorScreen
+import com.brenoworker.androidpower.ui.screens.NotificationsScreen
 import com.brenoworker.androidpower.ui.screens.PowerScreen
 import com.brenoworker.androidpower.ui.theme.AndroidPowerTheme
 
@@ -53,7 +55,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     Battery("Battery", Icons.Filled.Home),
     Power("Power", Icons.Filled.Settings),
     Apps("Apps", Icons.AutoMirrored.Filled.List),
-    Monitor("Monitor", Icons.Filled.Notifications)
+    Monitor("Monitor", Icons.Filled.Warning),
+    Notifications("Alerts", Icons.Filled.Notifications)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +68,11 @@ private fun AndroidPowerApp(viewModel: PowerViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val apps by viewModel.apps.collectAsStateWithLifecycle()
+    val notificationSettings by viewModel.notificationSettings.collectAsStateWithLifecycle()
+    val notificationAccess by viewModel.notificationAccess.collectAsStateWithLifecycle()
+    val activeNotifications by viewModel.activeNotifications.collectAsStateWithLifecycle()
+    val notificationCounts by viewModel.notificationCounts.collectAsStateWithLifecycle()
+    val mutedPackages by viewModel.mutedPackages.collectAsStateWithLifecycle()
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshSettings()
@@ -102,6 +110,16 @@ private fun AndroidPowerApp(viewModel: PowerViewModel = viewModel()) {
                     onSettingsChange = viewModel::updateSettings,
                     onRefreshHistory = viewModel::refreshHistory,
                     onClearHistory = viewModel::clearHistory
+                )
+                Tab.Notifications -> NotificationsScreen(
+                    settings = notificationSettings,
+                    hasAccess = notificationAccess,
+                    active = activeNotifications,
+                    counts = notificationCounts,
+                    muted = mutedPackages,
+                    onSettingsChange = viewModel::updateNotificationSettings,
+                    onMuteChange = viewModel::setMuted,
+                    onResetCounts = viewModel::resetNotificationCounts
                 )
             }
         }

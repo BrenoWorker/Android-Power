@@ -8,6 +8,7 @@ An Android-only power and battery manager written in Kotlin with Jetpack Compose
 - **Power**: Battery Saver, Doze, thermal throttling, location saver and screen state, plus recommendations and shortcuts to the system power settings.
 - **Apps**: every launchable app with its battery optimization status (Optimized or Unrestricted), with search, filters and a shortcut to each app's settings.
 - **Monitor**: a background service with a live status notification, battery history with drain and charge rates, and alerts for charge limit, low battery and high temperature. It restarts automatically after a reboot.
+- **Notifications**: control Android Power's own notifications (detailed status, alert sound, quiet hours) and, with notification access, see active notifications from every app, dismiss or snooze them, count notifications per app today and mute noisy apps so their notifications are dismissed automatically.
 
 ## Requirements
 

@@ -16,9 +16,13 @@ import com.brenoworker.androidpower.data.BatterySnapshot
 import com.brenoworker.androidpower.data.HistorySample
 import com.brenoworker.androidpower.data.HistoryStore
 import com.brenoworker.androidpower.data.MonitorSettings
+import com.brenoworker.androidpower.data.NotificationHub
+import com.brenoworker.androidpower.data.NotificationPrefs
+import com.brenoworker.androidpower.data.NotificationSettings
 import com.brenoworker.androidpower.data.PowerPrefs
 import com.brenoworker.androidpower.data.PowerState
 import com.brenoworker.androidpower.data.PowerStateReader
+import com.brenoworker.androidpower.service.NotificationControlService
 import com.brenoworker.androidpower.service.PowerMonitorService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -37,6 +41,7 @@ class PowerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app: Application = application
     private val prefs = PowerPrefs(application)
+    private val notificationPrefs = NotificationPrefs(application)
 
     val battery: StateFlow<BatterySnapshot> = callbackFlow {
         var latest = BatteryReader.stickyIntent(app)
@@ -104,8 +109,47 @@ class PowerViewModel(application: Application) : AndroidViewModel(application) {
     private val _apps = MutableStateFlow<List<AppPowerInfo>?>(null)
     val apps: StateFlow<List<AppPowerInfo>?> = _apps.asStateFlow()
 
+    private val _notificationSettings = MutableStateFlow(notificationPrefs.load())
+    val notificationSettings: StateFlow<NotificationSettings> = _notificationSettings.asStateFlow()
+
+    private val _mutedPackages = MutableStateFlow(notificationPrefs.mutedPackages())
+    val mutedPackages: StateFlow<Set<String>> = _mutedPackages.asStateFlow()
+
+    private val _notificationAccess = MutableStateFlow(NotificationHub.hasAccess(application))
+    val notificationAccess: StateFlow<Boolean> = _notificationAccess.asStateFlow()
+
+    val activeNotifications = NotificationHub.active
+    val notificationCounts = NotificationHub.counts
+
     fun refreshSettings() {
         _settings.value = prefs.load()
+        _notificationSettings.value = notificationPrefs.load()
+        _notificationAccess.value = NotificationHub.hasAccess(app)
+        if (_notificationAccess.value) {
+            if (!NotificationHub.connected.value) {
+                NotificationHub.requestRebind(app, NotificationControlService::class.java)
+            }
+            viewModelScope.launch {
+                NotificationHub.publishCounts(withContext(Dispatchers.IO) { notificationPrefs.todayCounts() })
+            }
+        }
+    }
+
+    fun updateNotificationSettings(transform: (NotificationSettings) -> NotificationSettings) {
+        val updated = transform(_notificationSettings.value)
+        _notificationSettings.value = updated
+        notificationPrefs.save(updated)
+    }
+
+    fun setMuted(packageName: String, muted: Boolean) {
+        _mutedPackages.value = notificationPrefs.setMuted(packageName, muted)
+    }
+
+    fun resetNotificationCounts() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { notificationPrefs.resetCounts() }
+            NotificationHub.publishCounts(emptyMap())
+        }
     }
 
     fun updateSettings(transform: (MonitorSettings) -> MonitorSettings) {

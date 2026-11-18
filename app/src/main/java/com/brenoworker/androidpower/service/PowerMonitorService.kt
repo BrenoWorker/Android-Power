@@ -14,12 +14,14 @@ import androidx.core.content.ContextCompat
 import com.brenoworker.androidpower.data.BatteryReader
 import com.brenoworker.androidpower.data.BatterySnapshot
 import com.brenoworker.androidpower.data.HistoryStore
+import com.brenoworker.androidpower.data.NotificationPrefs
 import com.brenoworker.androidpower.data.PowerPrefs
 import com.brenoworker.androidpower.ui.Format
 
 class PowerMonitorService : Service() {
 
     private lateinit var prefs: PowerPrefs
+    private lateinit var notificationPrefs: NotificationPrefs
     private var registered = false
     private var lastHistoryLevel = -1
     private var lastHistoryAt = 0L
@@ -39,6 +41,7 @@ class PowerMonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = PowerPrefs(this)
+        notificationPrefs = NotificationPrefs(this)
         Notifications.ensureChannels(this)
         val initial = BatteryReader.read(this, BatteryReader.stickyIntent(this))
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -46,7 +49,7 @@ class PowerMonitorService : Service() {
         } else {
             0
         }
-        ServiceCompat.startForeground(this, Notifications.STATUS_ID, Notifications.status(this, initial), type)
+        ServiceCompat.startForeground(this, Notifications.STATUS_ID, Notifications.status(this, initial, notificationPrefs.load().detailedStatus), type)
         ContextCompat.registerReceiver(
             this,
             receiver,
@@ -79,7 +82,7 @@ class PowerMonitorService : Service() {
         if (now - lastNotificationAt >= NOTIFICATION_INTERVAL_MS) {
             lastNotificationAt = now
             getSystemService(NotificationManager::class.java)
-                .notify(Notifications.STATUS_ID, Notifications.status(this, snapshot))
+                .notify(Notifications.STATUS_ID, Notifications.status(this, snapshot, notificationPrefs.load().detailedStatus))
         }
         if (snapshot.level != lastHistoryLevel || now - lastHistoryAt >= HISTORY_INTERVAL_MS) {
             lastHistoryLevel = snapshot.level
@@ -91,6 +94,8 @@ class PowerMonitorService : Service() {
 
     private fun checkAlerts(snapshot: BatterySnapshot) {
         val settings = prefs.load()
+        val notificationSettings = notificationPrefs.load()
+        val silent = !notificationSettings.alertSound || notificationSettings.isQuietNow()
 
         val chargeReached = settings.chargeLimitEnabled && snapshot.isPluggedIn && snapshot.level >= settings.chargeLimit
         if (chargeReached && !chargeAlerted) {
@@ -99,7 +104,8 @@ class PowerMonitorService : Service() {
                 this,
                 AlertKind.ChargeLimit,
                 "Charge limit reached",
-                "Battery is at ${snapshot.level}%. Unplug now to reduce battery wear."
+                "Battery is at ${snapshot.level}%. Unplug now to reduce battery wear.",
+                silent
             )
         } else if (!chargeReached && chargeAlerted) {
             chargeAlerted = false
@@ -113,7 +119,8 @@ class PowerMonitorService : Service() {
                 this,
                 AlertKind.LowBattery,
                 "Battery low",
-                "Battery is at ${snapshot.level}%. Plug in or turn on Battery Saver."
+                "Battery is at ${snapshot.level}%. Plug in or turn on Battery Saver.",
+                silent
             )
         } else if (!lowReached && lowAlerted) {
             lowAlerted = false
@@ -128,7 +135,8 @@ class PowerMonitorService : Service() {
                 this,
                 AlertKind.Temperature,
                 "Battery is hot",
-                "Battery temperature is ${Format.temperature(snapshot.temperatureC)}. Let the device cool down."
+                "Battery temperature is ${Format.temperature(snapshot.temperatureC)}. Let the device cool down.",
+                silent
             )
         } else if ((cooled || !settings.temperatureEnabled) && heatAlerted) {
             heatAlerted = false

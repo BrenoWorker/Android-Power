@@ -3,8 +3,15 @@ name: Build
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -18,13 +25,16 @@ jobs:
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: Build APKs
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug assembleRelease --no-daemon
+          ./gradlew assembleDebug assembleRelease --build-cache --parallel --configuration-cache -x lint
 
       - uses: actions/upload-artifact@v4
         with:
           name: AndroidPower
           path: app/build/outputs/apk/**/*.apk
+          compression-level: 0
